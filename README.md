@@ -67,6 +67,7 @@ Since we added `when: keyout.changed` line we won't get an error in future playb
         cidr_block: "{{ vpcCidr }}"
         region: "{{ region }}"
         dns_hostnames: yes
+        dns_support: yes
         tenancy: default
         state: "{{ state }}}"
       register: vpcout
