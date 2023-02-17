@@ -1,7 +1,7 @@
 vpc_name: "Ada_vpc"
 
 # vpc range
-vpcCider: '172.20.0.0/16'
+vpcCidr: '172.20.0.0/16'
 
 # subnet range
 
