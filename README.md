@@ -63,7 +63,7 @@ Since we added `when: keyout.changed` line we won't get an error in future playb
       include_vars: vars/vpc_setup
     - name: create vpc
       ec2_vpc_net:
-        name: "{{ Ada_vpc }}"
+        name: "{{ vpc_name }}"
         cidr_block: "{{ vpcCidr }}"
         region: "{{ region }}"
         dns_hostnames: yes
