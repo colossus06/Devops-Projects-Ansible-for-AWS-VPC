@@ -52,4 +52,23 @@ Since we added `when: keyout.changed` line we won't get an error in future playb
 
 ![image](https://user-images.githubusercontent.com/96833570/219644766-12ec76ac-dcb3-45ae-8c55-be8af460aa57.png)
 
+## Creating vpc-setup.yaml file
 
+```
+- hosts: localhost
+  connection: local
+  gather_facts: False
+  tasks:
+    - name: Import vpc variables
+      include_vars: vars/vpc_setup
+    - name: create vpc
+      ec2_vpc_net:
+        name: "{{ Ada_vpc }}"
+        cidr_block: "{{ vpcCidr }}"
+        region: "{{ region }}"
+        dns_hostnames: yes
+        tenancy: default
+        state: "{{ state }}}"
+      register: vpcout
+        
+```
