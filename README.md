@@ -291,3 +291,106 @@ Since we added `when: keyout.changed` line we won't get an error in future playb
 ![image](https://user-images.githubusercontent.com/96833570/219750701-a651a1e4-07c2-49fe-a0e5-e87fc4841e36.png)
 
 ![image](https://user-images.githubusercontent.com/96833570/219871607-af9932e9-a243-43fc-a484-f326ec9284c1.png)
+
+![image](https://user-images.githubusercontent.com/96833570/219871760-562af667-a18d-446e-b636-8b073441820e.png)
+
+
+## Bastion Setup
+
+```
+---
+- name: ada bastion host
+  hosts: localhost
+  connection: local
+  gather_facts: False
+  tasks:
+
+# Note: import variable
+    - name: Import variables
+      include_vars: vars/bastion_setup
+
+# Note: create vpc
+    - name: create vpc
+      include_vars: vars/output_vars
+    - name: create ec2 key
+      ec2_key:
+        name: key
+        region: "{{region}}"
+      register: key_out
+
+# Note: save key
+    - name: save key to bastion-key.pem
+      copy:
+        content: "{{key_out.key.private_key}}"
+        dest: "./bastion-key.pem"
+        mode: 0600
+      when: key_out.changed
+
+# Note: create sg for bastion
+    - name: create sg for bastion
+      amazon.aws.ec2_security_group:
+        name: bastion-host-sg
+        description: allow 22 from everywhere and allow all ports withun the sg
+        region: "{{ region  }}"
+        vpc_id: "{{vpcid}}"
+        rules:
+          - proto: tcp
+            from_port: 22
+            to_port: 22
+            cidr_ip: "{{ MyIp  }}"
+        register: bastionsg_out
+
+# Note: start an instance
+    - name: start an instance with a public IP address
+      amazon.aws.ec2_instance:
+        name: "bastion-host"
+        key_name: "key"
+        image: "{{ bastion_ami }}"
+        region: "{{region}}"
+        vpc_subnet_id: "{{ pubsub1id }}"
+        instance_type: t2.micro
+        wait: yes
+        wait_timeout: 300
+        instance_tags:
+          Name: "my-bastion"
+        exact_count: 1
+        network:
+          assign_public_ip: true
+ 
+
+        security_group: "{{ bastionsg_out.group_id  }}"
+        register: bastionhost_out
+
+    - debug:
+        var: bastionhost_out
+
+
+```
+
+
+
+#### Debugging errors
+
+`AuthorizeSecurityGroupIngress operation: CIDR block 12.12.123.1234 is malformed` . 
+
+I forgot to add 1 host block /32. Relace the ip such as the following: `your-public-ip/32`
+
+### Final Validation
+
+![image](https://user-images.githubusercontent.com/96833570/219873732-4fb7075e-da08-4b19-86fd-2efe69c1d323.png)
+
+![image](https://user-images.githubusercontent.com/96833570/219873843-963d41e6-a16e-4d0a-bb20-dbb242ddad0c.png)
+
+
+![image](https://user-images.githubusercontent.com/96833570/219873770-29127130-fbd4-4d26-a53e-b748bd55ce8b.png)
+
+
+![image](https://user-images.githubusercontent.com/96833570/219874920-72f74379-deec-498e-a5e8-561d29786e38.png)
+
+
+![image](https://user-images.githubusercontent.com/96833570/219874995-3ffe748c-dd5f-4481-94a3-bde996a9f014.png)
+
+
+
+
+![ansible-vpc-bastion-devops](https://user-images.githubusercontent.com/96833570/219875554-f2e0502a-17fe-4197-8513-0596495bdc9e.gif)
