@@ -1,6 +1,25 @@
 # Devops-Projects-Ansible-for-AWS-VPC
 
-## Requirements
+## modules used:
+
+#### vpc
+
+* amazon.aws.ec2_vpc_net
+* amazon.aws.ec2_vpc_subnet
+* amazon.aws.ec2_vpc_igw
+* amazon.aws.ec2_vpc_route_table
+* amazon.aws.ec2_vpc_nat_gateway
+
+
+#### Bastion
+
+* amazon.aws.ec2_security_group
+* amazon.aws.ec2_instance
+
+
+## Creating the vpc playbook
+
+#### Requirements
 
 * boto
 
@@ -10,7 +29,6 @@
 
 ref: https://docs.ansible.com/ansible/2.9/modules/ec2_key_module.html#examples
 
-## Creating the playbook
 
 ```
 sudo apt update
@@ -168,9 +186,14 @@ Since we added `when: keyout.changed` line we won't get an error in future playb
         region: "{{ region }}"
         state: "{{ state }}"
         resource_tags:
-        Name: ada-igw
+          Name: ada-igw
       register: igw_out
 
+    - debug:
+        var: igw_out
+
+
+```
 # Note: create route table
 
     - name: Set up public subnet route table
@@ -178,15 +201,85 @@ Since we added `when: keyout.changed` line we won't get an error in future playb
         vpc_id: "{{ vpcout.vpc.id}}"
         region: "{{ region }}"
         tags:
-          Name: Ada-route-table
+          Name: Ada-PUBLIC-RT
         subnets:
           - "{{ pubsub1_out.subnet.id }}"
           - "{{ pubsub2_out.subnet.id }}"
           - "{{ pubsub3_out.subnet.id }}"
         routes:
           - dest: 0.0.0.0/0
-            gateway_id: "{{ igw.gateway_id }}"
+            gateway_id: "{{ igw_out.gateway_id }}"
       register: pubRT_out
+
+```
+
+```
+# Note: create nat gateway
+
+    - name: Create new nat gateway, using an EIP address  and wait for available status.
+      amazon.aws.ec2_vpc_nat_gateway:
+        state: "{{ state }}"
+        subnet_id: "{{ pubsub1_out.subnet.id }}"
+        wait: true
+        region: "{{ region }}"
+        if_exist_do_not_create: true
+      register: natgw_out
+
+      - debug:
+        var: natgw_out
+```
+
+
+```
+# Note: create route table for nat gateway
+
+    - name: Set up public subnet route table
+      amazon.aws.ec2_vpc_route_table:
+        vpc_id: "{{ vpcout.vpc.id}}"
+        region: "{{ region }}"
+        tags:
+          Name: Ada-PRIV-RT
+        subnets:
+          - "{{ privsub1_out.subnet.id }}"
+          - "{{ privsub2_out.subnet.id }}"
+          - "{{ privsub3_out.subnet.id }}"
+        routes:
+          - dest: 0.0.0.0/0
+            gateway_id: "{{ natgw_out.nat_gateway_id }}"
+      register: privRT_out
+
+    - debug:
+        var: "{{item}}"
+      loop:
+        - vpcout.vpc.id
+        - pubsub1_out.subnet.id
+        - pubsub2_out.subnet.id
+        - pubsub3_out.subnet.id
+        - privsub1_out.subnet.id
+        - privsub2_out.subnet.id
+        - privsub3_out.subnet.id
+        - pubRT_out.route_table.id
+        - igw_out.gateway_id
+        - natgw_out.nat_gateway_id
+        - privRT_out.route_table.id
+
+    - set_fact:
+        vpcid: "{{ vpcout.vpc.id }}"
+        pubsub1id: "{{ pubsub1_out.subnet.id }}"
+        pubsub2id: "{{ pubsub2_out.subnet.id }}"
+        pubsub3id: "{{ pubsub3_out.subnet.id }}"
+        privsub1id: "{{ privsub1_out.subnet.id }}"
+        privsub2id: "{{ privsub2_out.subnet.id }}"
+        privsub3id: "{{ privsub3_out.subnet.id }}"
+        igwid: "{{ igw_out.gateway_id }}"
+        natgwid: "{{ natgw_out.nat_gateway.id }}"
+        privRTid: "{{ privRT_out.route_table.id }}"
+        cacheable: yes
+
+    - name: Create var file
+      copy:
+        content: "vpcid: {{ vpcout.vpc.id }}\npubsub1id: {{ pubsub1_out.subnet.id }}\npubsub2id: {{ pubsub2_out.subnet.id }}\npubsub3id: {{ pubsub3_out.subnet.id }}\nprivsub1id: {{ privsub1_out.subnet.id }}\nprivsub2id: {{ privsub2_out.subnet.id }}\nprivsub3id: {{ privsub3_out.subnet.id }}\nigwid: {{ igw_out.gateway_id }}\nnatgwid: {{ natgw_out.nat_gateway_id }}\nprivRTid: {{ privRT_out.route_table.id }}"
+        dest: vars/output_vars
 ```
 
 ![image](https://user-images.githubusercontent.com/96833570/219719816-a0e803a2-27b9-4778-8b8a-02088c4002c0.png)
@@ -194,3 +287,4 @@ Since we added `when: keyout.changed` line we won't get an error in future playb
 
 ![image](https://user-images.githubusercontent.com/96833570/219750701-a651a1e4-07c2-49fe-a0e5-e87fc4841e36.png)
 
+![image](https://user-images.githubusercontent.com/96833570/219871607-af9932e9-a243-43fc-a484-f326ec9284c1.png)
