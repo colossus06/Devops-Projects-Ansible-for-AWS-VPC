@@ -191,7 +191,7 @@ Since we added `when: keyout.changed` line we won't get an error in future playb
 
     - debug:
         var: igw_out
-
+```
 
 ```
 # Note: create route table
@@ -280,7 +280,10 @@ Since we added `when: keyout.changed` line we won't get an error in future playb
       copy:
         content: "vpcid: {{ vpcout.vpc.id }}\npubsub1id: {{ pubsub1_out.subnet.id }}\npubsub2id: {{ pubsub2_out.subnet.id }}\npubsub3id: {{ pubsub3_out.subnet.id }}\nprivsub1id: {{ privsub1_out.subnet.id }}\nprivsub2id: {{ privsub2_out.subnet.id }}\nprivsub3id: {{ privsub3_out.subnet.id }}\nigwid: {{ igw_out.gateway_id }}\nnatgwid: {{ natgw_out.nat_gateway_id }}\nprivRTid: {{ privRT_out.route_table.id }}"
         dest: vars/output_vars
+        
 ```
+
+
 
 ![image](https://user-images.githubusercontent.com/96833570/219719816-a0e803a2-27b9-4778-8b8a-02088c4002c0.png)
 
